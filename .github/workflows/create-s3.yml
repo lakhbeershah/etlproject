@@ -1,5 +1,36 @@
-- name: Configure AWS credentials
-  uses: aws-actions/configure-aws-credentials@v4
-  with:
-    role-to-assume: ${{ vars.AWS_ROLE_ARN }}
-    aws-region: ${{ vars.AWS_REGION }}
+name: Create S3 Bucket
+
+on:
+  workflow_dispatch:
+    inputs:
+      bucket_name:
+        description: "Name of the S3 bucket to create"
+        required: true
+
+permissions:
+  id-token: write       # Required for OIDC
+  contents: read        # Allows reading repo content
+
+jobs:
+  create-bucket:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Create S3 bucket
+        run: |
+          echo "Creating S3 bucket: ${{ github.event.inputs.bucket_name }}"
+          aws s3api create-bucket \
+            --bucket "${{ github.event.inputs.bucket_name }}" \
+            --region "${{ vars.AWS_REGION }}" \
+            --create-bucket-configuration LocationConstraint=${{ vars.AWS_REGION }}
+
+      - name: Verify bucket creation
+        run: aws s3 ls
